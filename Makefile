@@ -3,7 +3,7 @@ CC = gcc
 CFLAGS = -Wall -Wextra -g
 
 # Executable name
-TARGET = fir_nn
+TARGET = connected-four
 
 # Source files
 SRCS = main.c neural_network.c game.c
@@ -27,6 +27,9 @@ clean:
 	rm -f $(OBJS) $(TARGET)
 
 run:
-	make && ./fir_nn
+	make && ./$(TARGET)
+
+run-clean:
+	run clean
 # Mark targets that don't produce files
 .PHONY: all clean

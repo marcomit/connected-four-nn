@@ -120,11 +120,16 @@ void insert(GameState *state, uint8_t col) {
     printf("%d is not valid\n", col);
     return;
   }
+
   state->board[row * COLS + col] = state->turn;
   state->winner = check_win(state, row, col);
-  if (state->winner == NULL)
+
+  if (!state->winner) {
     check_full_board(state);
-  change_turn(state);
+  }
+  if (!state->winner) {
+    change_turn(state);
+  }
 }
 
 void draw_board(GameState *state) {
@@ -169,7 +174,7 @@ BOARD *game_loop(GameState *state, NeuralNetwork *nn) {
       // col = player_move();
       col = random_move(state);
     } else {
-      nn_run(nn, state);
+      nn_run(nn, state->board);
       // col = random_move(state);
     }
     insert(state, col);

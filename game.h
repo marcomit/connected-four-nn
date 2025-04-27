@@ -18,10 +18,12 @@ typedef struct {
 } GameState;
 
 GameState *game_init();
-uint8_t random_col(GameState *state);
-void insert(GameState *state, uint8_t col);
-void draw_board(GameState *state);
 
-BOARD *game_loop(GameState *state, NeuralNetwork *nn);
+uint8_t random_move(GameState *);
+int8_t valid_col(GameState *, uint8_t);
+void insert(GameState *, uint8_t);
+void draw_board(GameState *);
+
+BOARD *game_loop(GameState *, NeuralNetwork *);
 
 #endif // GAME_H
