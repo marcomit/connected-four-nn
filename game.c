@@ -174,7 +174,7 @@ BOARD *game_loop(GameState *state, NeuralNetwork *nn) {
       // col = player_move();
       col = random_move(state);
     } else {
-      nn_run(nn, state->board);
+      nn_run(nn, (float *)state->board);
       // col = random_move(state);
     }
     insert(state, col);

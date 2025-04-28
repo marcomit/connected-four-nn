@@ -40,7 +40,6 @@ struct NNLayer {
 struct NNHistory {
   float *input;
   uint8_t taken;
-  NNHistory *next;
 };
 
 typedef struct NeuralNetwork {
@@ -49,16 +48,18 @@ typedef struct NeuralNetwork {
   float learning_rate;
 
   NNHistory *history;
+  uint8_t num_moves;
 } NeuralNetwork;
 
 void softmax(NNLayer *);
 
-NeuralNetwork *nn_create(size_t, float);
+NeuralNetwork *nn_create(size_t, float, size_t);
 
 NNLayer *dense(size_t, Activation, void (*normalize)(NNLayer *));
 
-void nn_init_weights(NeuralNetwork *);
-float *nn_run(NeuralNetwork *, float *);
-void nn_train(NeuralNetwork *nn, float);
-
+void nn_init(NeuralNetwork *);
+void nn_run(NeuralNetwork *, float *);
+void nn_save_move(NeuralNetwork *);
+void nn_train(NeuralNetwork *, float);
+void nn_free_history(NeuralNetwork *);
 #endif // NEURAL_NETWORK_H
