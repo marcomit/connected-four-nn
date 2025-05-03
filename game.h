@@ -1,15 +1,12 @@
 #ifndef GAME_H
 #define GAME_H
-
+#include "ann.h"
 #include <stdint.h>
 
 #define ROWS 6
 #define COLS 7
 
 typedef enum { EMPTY, RED, BLUE } BOARD;
-
-// Forward declaration of NeuralNetwork
-typedef struct NeuralNetwork NeuralNetwork;
 
 typedef struct {
   BOARD board[ROWS * COLS];
@@ -20,10 +17,10 @@ typedef struct {
 GameState *game_init();
 
 uint8_t random_move(GameState *);
+uint8_t player_move(GameState *);
+
 int8_t valid_col(GameState *, uint8_t);
 void insert(GameState *, uint8_t);
 void draw_board(GameState *);
-
-BOARD *game_loop(GameState *, NeuralNetwork *);
 
 #endif // GAME_H

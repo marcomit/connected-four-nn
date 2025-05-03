@@ -2,34 +2,42 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -g
 
+# Directories
+BUILD_DIR := target
+
 # Executable name
-TARGET = connected-four
+TARGET = $(BUILD_DIR)/4nn
 
 # Source files
-SRCS = main.c neural_network.c game.c
+SRCS = main.c ann.c game.c
 
-# Object files (automatically generated from SRCS)
-OBJS = $(SRCS:.c=.o)
+# Object files in target directory
+OBJS = $(SRCS:%.c=$(BUILD_DIR)/%.o)
 
-# Default target (build everything)
+# Default target
 all: $(TARGET)
 
 # Link object files into executable
 $(TARGET): $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $^
 
-# Compile each .c file into .o file
-%.o: %.c dlist.h
-	$(CC) $(CFLAGS) -c $<
+# Compile each .c file into .o in target directory
+$(BUILD_DIR)/%.o: %.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
 
-# Clean up build files
+# Ensure build directory exists
+$(BUILD_DIR):
+	mkdir -p $(BUILD_DIR)
+
+# Clean up
 clean:
-	rm -f $(OBJS) $(TARGET)
+	rm -rf $(BUILD_DIR)
 
 run:
 	make && ./$(TARGET)
 
 run-clean:
-	run clean
-# Mark targets that don't produce files
-.PHONY: all clean
+	make clean && make run
+
+.PHONY: all clean run run-clean
+

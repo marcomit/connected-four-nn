@@ -1,5 +1,4 @@
 #include "game.h"
-#include "neural_network.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -117,7 +116,7 @@ static void check_full_board(GameState *state) {
 void insert(GameState *state, uint8_t col) {
   int8_t row = valid_col(state, col);
   if (row == -1) {
-    printf("%d is not valid\n", col);
+    // printf("%d is not valid\n", col);
     return;
   }
 
@@ -147,7 +146,7 @@ void draw_board(GameState *state) {
   printf(DEFAULT_FG "\n");
 }
 
-uint8_t player_move() {
+uint8_t player_move(GameState *state) {
   int col = -1;
   while (col == -1) {
     printf("Inserisci la colonna: ");
@@ -166,22 +165,3 @@ uint8_t player_move() {
 
 // uint8_t neural_network_move(GameState *state, NeuralNetwork *nn) { return 0;
 // }
-
-BOARD *game_loop(GameState *state, NeuralNetwork *nn) {
-  uint8_t col;
-  while (state->winner == NULL) {
-    if (state->turn == RED) {
-      // col = player_move();
-      col = random_move(state);
-    } else {
-      nn_run(nn, (float *)state->board);
-      // col = random_move(state);
-    }
-    insert(state, col);
-    // draw_board(state);
-  }
-  change_turn(state);
-  // printf("The winner is ");
-  // printf("%s  %s", *state->winner == RED ? RED_FG : BLUE_FG, DEFAULT_FG);
-  return state->winner;
-}
