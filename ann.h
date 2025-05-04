@@ -76,4 +76,6 @@ void nnbalance(NeuralNetwork *, float *);
 void nnstoreentry(NeuralNetwork *, uint16_t taken);
 void nnfreehistory(NeuralNetworkEntry *);
 
+void nnsave(NeuralNetwork *, const char *);
+void nnload(NeuralNetwork *, const char *);
 #endif /* ifndef ANN_H */

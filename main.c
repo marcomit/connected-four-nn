@@ -44,10 +44,11 @@ void train(NeuralNetwork *net, float reward) {
 
   NeuralNetworkEntry **moves =
       (NeuralNetworkEntry **)malloc(move_count * sizeof(NeuralNetworkEntry *));
-  if (!moves)
-    return;
+
   size_t idx = move_count - 1;
+
   current = net->history;
+
   while (current != NULL) {
     moves[idx--] = current;
     current = current->next;
@@ -63,8 +64,9 @@ void train(NeuralNetwork *net, float reward) {
 
   free(moves);
 }
+
 int8_t take_valid_col(GameState *state, float *out) {
-  float epsilon = 0.2f;
+  float epsilon = 0.2f; // Il 20% delle volte spara a caso
 
   if ((float)rand() / RAND_MAX < epsilon) {
     int valid_cols[COLS];
@@ -140,26 +142,46 @@ BOARD *game(NeuralNetwork *net) {
   }
 
   train(net, reward);
-  nnfreehistory(net->history);
+  // nnfreehistory(net->history->next);
+  net->history = NULL;
   return winner;
+}
+
+void print_stats(size_t w, size_t l, size_t p) {
+  printf("TOTAL: %zu WINS: %zu LOSES: %zu PAIRS: %zu\n", l + w + p, w, l, p);
 }
 
 int main(int argc, char **argv) {
   srand(time(NULL));
   int games = 10000;
+  // NeuralNetwork *net = nncreate(8, 0.1f);
+  // net->layers[0] = dense(42, RELU);
+  // net->layers[1] = dense(64, RELU);
+  // net->layers[2] = dense(128, RELU);
+  // net->layers[3] = dense(256, RELU);
+  // net->layers[4] = dense(128, RELU);
+  // net->layers[5] = dense(64, RELU);
+  // net->layers[6] = dense(32, RELU);
+  // net->layers[7] = dense(7, SOFTMAX);
   NeuralNetwork *net = nncreate(5, 0.1f);
   net->layers[0] = dense(42, RELU);
   net->layers[1] = dense(128, RELU);
   net->layers[2] = dense(64, RELU);
   net->layers[3] = dense(32, RELU);
   net->layers[4] = dense(7, SOFTMAX);
+
   nninit(net);
+  // nnload(net, "rl");
+
+  size_t twins = 0;
+  size_t tloses = 0;
+  size_t tpairs = 0;
 
   size_t wins = 0;
   size_t loses = 0;
   size_t pairs = 0;
 
-  for (int i = 0; i < games; i++) {
+  for (int i = 1; i <= games; i++) {
     BOARD *winner = game(net);
     if (*winner == EMPTY) {
       pairs++;
@@ -167,12 +189,22 @@ int main(int argc, char **argv) {
       wins++;
     } else
       loses++;
+    if (i % 100 == 0) {
+      print_stats(wins, loses, pairs);
+      twins += wins;
+      wins = 0;
+      tloses += loses;
+      loses = 0;
+      tpairs += pairs;
+      pairs = 0;
+    }
   }
-  printf("Total: %zu\n", loses + wins + pairs);
-  printf("%zu wins\n", wins);
-  printf("%zu pairs\n", pairs);
-  printf("%zu loses\n", loses);
+  NeuralNetwork net2;
+  memcpy(&net2, net, sizeof(NeuralNetwork));
 
+  printf("\n");
+  print_stats(twins, tloses, tpairs);
+  nnsave(net, "rl");
   gameplay(net, player_move, 1);
   return 0;
 }

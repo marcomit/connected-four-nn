@@ -160,6 +160,8 @@ uint8_t player_move(GameState *state) {
       printf("Numero inserito non valido\n");
     }
   }
+  if (valid_col(state, col - 1) == -1)
+    return player_move(state);
   return col - 1;
 }
 

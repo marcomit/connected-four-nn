@@ -368,5 +368,88 @@ static void backward_pass(NeuralNetwork *nn, float *target) {
 void nnforesee(NeuralNetwork *nn, float *inputs) { forward_pass(nn, inputs); }
 void nnbalance(NeuralNetwork *nn, float *target) { backward_pass(nn, target); }
 
-void nnsave(NeuralNetwork *nn) {}
-void nnload(const char *f) {}
+void nnsave(NeuralNetwork *nn, const char *f) {
+  FILE *file = fopen(f, "w");
+
+  fprintf(file, "%zu %.2f\n", nn->len, nn->learning_rate);
+
+  // Carica tutte le dimensioni dei layer
+  for (size_t i = 0; i < nn->len; i++) {
+    fprintf(file, "%zu ", nn->layers[i]->len);
+  }
+  for (size_t i = 1; i < nn->len; i++) {
+    NNL *curr = nn->layers[i];
+    NNL *prev = nn->layers[i - 1];
+
+    // Intestazione del layer
+    fprintf(file, "%zu %d", curr->len, curr->activation);
+
+    // Biases del layer
+    for (size_t j = 0; j < curr->len; j++) {
+      fprintf(file, "%.2f ", curr->b[j]);
+    }
+    fprintf(file, "\n");
+
+    // Pesi del layer
+    for (size_t j = 0; j < curr->len; j++) {
+      for (size_t k = 0; k < prev->len; k++) {
+        fprintf(file, "%.2f ", curr->W[j][k]);
+      }
+      fprintf(file, "\n");
+    }
+    fprintf(file, "\n");
+  }
+  fclose(file);
+}
+
+static void load_layer(NNL *l, FILE *fd, size_t len, size_t prev_len) {
+
+  float v;
+  fscanf(fd, "%f", &v);
+}
+
+void nnload(NeuralNetwork *net, const char *f) {
+  FILE *fd = fopen(f, "r");
+
+  float v;
+  fscanf(fd, "%f", &v);
+  net->len = (size_t)v;
+
+  net->layers = malloc(sizeof(NNL *) * net->len);
+
+  fscanf(fd, "%f", &v);
+  float learning_rate = v;
+
+  for (size_t i = 0; i < net->len; i++) {
+    net->layers[i] = malloc(sizeof(NNL));
+    fscanf(fd, "%f", &v);
+    net->layers[i]->len = (size_t)v;
+  }
+
+  for (size_t i = 1; i < net->len; i++) {
+    NNL *curr = net->layers[i];
+    NNL *prev = net->layers[i - 1];
+
+    curr->b = calloc(curr->len, sizeof(float));
+    curr->a = calloc(curr->len, sizeof(float));
+    curr->z = calloc(curr->len, sizeof(float));
+    curr->d = calloc(curr->len, sizeof(float));
+    curr->db = calloc(curr->len, sizeof(float));
+    curr->dW = malloc(sizeof(float *) * curr->len);
+    curr->W = malloc(sizeof(float *) * curr->len);
+
+    for (size_t j = 0; j < curr->len; j++) {
+      fscanf(fd, "%f", &v);
+      curr->b[j] = v;
+    }
+
+    for (size_t j = 0; j < curr->len; j++) {
+      curr->W = malloc(sizeof(float) * prev->len);
+      curr->dW = malloc(sizeof(float) * prev->len);
+      for (size_t k = 0; k < prev->len; k++) {
+        // curr->W[k] =
+      }
+    }
+    // load_layer(curr, fd, curr->len, prev->len);
+  }
+}
