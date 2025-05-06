@@ -9,7 +9,7 @@
 typedef NeuralNetworkLayer NNL;
 typedef NeuralNetworkEntry NNE;
 
-float max(float *X, size_t len) {
+float nnmax(float *X, size_t len) {
   float m = X[0];
   for (size_t i = 1; i < len; i++) {
     if (X[i] > m)
@@ -96,7 +96,7 @@ static float activation_derivative_single(NNA type, float x) {
 static void activation(NNL *layer) {
   NNA activation = layer->activation;
   if (activation == SOFTMAX) {
-    float m = max(layer->z, layer->len);
+    float m = nnmax(layer->z, layer->len);
     float s = 0.0f;
     for (size_t i = 0; i < layer->len; i++) {
       layer->a[i] = expf(layer->z[i] - m);
@@ -248,29 +248,6 @@ void nninit(NeuralNetwork *nn) {
   }
 }
 
-void nnstoreentry(NeuralNetwork *nn, uint16_t taken) {
-  NNE *entry = malloc(sizeof(NNE));
-  entry->taken = taken;
-
-  NNL *in = nn->layers[0];
-
-  entry->inputs = malloc(sizeof(float) * in->len);
-  memcpy(entry->inputs, in->z, in->len);
-
-  entry->next = nn->history;
-  if (!nn->history) {
-    nn->history = malloc(sizeof(NNE));
-  }
-  nn->history = entry;
-}
-
-void nnfreehistory(NNE *e) {
-  if (e == NULL)
-    return;
-  nnfreehistory(e->next);
-  free(e->inputs);
-}
-
 static void forward_pass_layer(NNL *prev, NNL *curr) {
   for (size_t i = 0; i < curr->len; i++) {
     float z = curr->b[i];
@@ -283,7 +260,7 @@ static void forward_pass_layer(NNL *prev, NNL *curr) {
   activation(curr);
 }
 
-static void forward_pass(NeuralNetwork *nn, float *inputs) {
+void nnforesee(NeuralNetwork *nn, float *inputs) {
   // Copy the input into the first layer
   for (size_t i = 0; i < nn->layers[0]->len; i++) {
     nn->layers[0]->z[i] = inputs[i];
@@ -322,10 +299,10 @@ static void backward_hidden(NNL *curr, NNL *next) {
   // printf("fine\n");
 }
 
-static void compute_gradients(NNL *curr, float *input, size_t len) {
+static void compute_gradients(NNL *curr, NNL *prev) {
   for (size_t i = 0; i < curr->len; i++) {
-    for (size_t j = 0; j < len; j++) {
-      curr->dW[i][j] = curr->d[i] * input[j];
+    for (size_t j = 0; j < prev->len; j++) {
+      curr->dW[i][j] = curr->d[i] * prev->z[j];
     }
   }
 }
@@ -340,7 +317,7 @@ static void apply_gradients(NNL *curr, NNL *prev, float learning_rate) {
 }
 
 // For the last layer we calculate the deltas with the targets
-static void backward_pass(NeuralNetwork *nn, float *target) {
+void nnbalance(NeuralNetwork *nn, float *target) {
   size_t L = nn->len;
   backward_output(nn->layers[L - 1], target);
 
@@ -348,14 +325,12 @@ static void backward_pass(NeuralNetwork *nn, float *target) {
     backward_hidden(nn->layers[i - 1], nn->layers[i]);
   }
 
-  NNL *in = nn->layers[1];
-
-  compute_gradients(in, nn->history->inputs, in->len);
+  compute_gradients(nn->layers[1], nn->layers[0]);
 
   for (size_t i = 2; i < L; i++) {
     NNL *curr = nn->layers[i];
     NNL *prev = nn->layers[i - 1];
-    compute_gradients(curr, prev->a, prev->len);
+    compute_gradients(curr, prev);
   }
 
   for (size_t i = 1; i < L; i++) {
@@ -365,35 +340,53 @@ static void backward_pass(NeuralNetwork *nn, float *target) {
   }
 }
 
-void nnforesee(NeuralNetwork *nn, float *inputs) { forward_pass(nn, inputs); }
-void nnbalance(NeuralNetwork *nn, float *target) { backward_pass(nn, target); }
+float *nnforward(NeuralNetwork *net, float *inputs) {
+  nnforesee(net, inputs);
+  NNL *out = net->layers[net->len - 1];
+  return out->a;
+}
 
+/* La prima riga e' l'intestazione della rete.
+ * Cioe' il primo numero e' il numero di layer ed il secondo il learning_rate.
+ *
+ * Caricamento dei layer:
+ * Ogni layer ha la seguente struttura:
+ *  - Prima riga  : contiene il numero di neuroni e la funzione di attivazione
+ *  - Seconda riga: contiene la lista di biases del layer
+ *  - Terza riga  : contiene i pesi ed avra una lunghezza pari a:
+ *    lunghezza del layer x la lunghezza del layer precedente (Il primo layer
+ * non ha pesi).
+ */
 void nnsave(NeuralNetwork *nn, const char *f) {
   FILE *file = fopen(f, "w");
 
-  fprintf(file, "%zu %.2f\n", nn->len, nn->learning_rate);
+  fprintf(file, "%zu %.5f\n", nn->len, nn->learning_rate);
 
   // Carica tutte le dimensioni dei layer
   for (size_t i = 0; i < nn->len; i++) {
-    fprintf(file, "%zu ", nn->layers[i]->len);
+    fprintf(file, "%zu %d\n", nn->layers[i]->len, nn->layers[i]->activation);
   }
+
+  // Carica i bias del primo layer
+  for (size_t i = 0; i < nn->layers[0]->len; i++) {
+    fprintf(file, "%.5f ", nn->layers[0]->b[i]);
+  }
+  fprintf(file, "\n");
+
   for (size_t i = 1; i < nn->len; i++) {
     NNL *curr = nn->layers[i];
     NNL *prev = nn->layers[i - 1];
 
-    // Intestazione del layer
-    fprintf(file, "%zu %d", curr->len, curr->activation);
-
     // Biases del layer
     for (size_t j = 0; j < curr->len; j++) {
-      fprintf(file, "%.2f ", curr->b[j]);
+      fprintf(file, "%.5f ", curr->b[j]);
     }
     fprintf(file, "\n");
 
     // Pesi del layer
     for (size_t j = 0; j < curr->len; j++) {
       for (size_t k = 0; k < prev->len; k++) {
-        fprintf(file, "%.2f ", curr->W[j][k]);
+        fprintf(file, "%.5f ", curr->W[j][k]);
       }
       fprintf(file, "\n");
     }
@@ -402,54 +395,64 @@ void nnsave(NeuralNetwork *nn, const char *f) {
   fclose(file);
 }
 
-static void load_layer(NNL *l, FILE *fd, size_t len, size_t prev_len) {
-
+static void load_layer(NNL *l, FILE *fd, size_t prev_len) {
   float v;
   fscanf(fd, "%f", &v);
+  for (size_t i = 0; i < l->len; i++) {
+    l->W[i] = malloc(sizeof(float) * prev_len);
+    l->dW[i] = malloc(sizeof(float) * prev_len);
+    // l->a[i] = 0;
+    // l->d[i] = 0;
+    // l->b[i] = 0;
+    // l->z[i] = 0;
+    for (size_t j = 0; j < prev_len; j++) {
+      fscanf(fd, "%f", &v);
+      l->W[i][j] = v;
+      l->dW[i][j] = 0;
+    }
+  }
 }
 
 void nnload(NeuralNetwork *net, const char *f) {
   FILE *fd = fopen(f, "r");
 
   float v;
-  fscanf(fd, "%f", &v);
-  net->len = (size_t)v;
+
+  fscanf(fd, "%zu", &net->len);
 
   net->layers = malloc(sizeof(NNL *) * net->len);
 
   fscanf(fd, "%f", &v);
-  float learning_rate = v;
+
+  net->learning_rate = v;
 
   for (size_t i = 0; i < net->len; i++) {
     net->layers[i] = malloc(sizeof(NNL));
-    fscanf(fd, "%f", &v);
-    net->layers[i]->len = (size_t)v;
+    size_t len;
+    NNA nna;
+
+    fscanf(fd, "%zu", &len);
+    fscanf(fd, "%d", &nna);
+
+    net->layers[i]->activation = (NNA)nna;
+    net->layers[i]->len = len;
+    net->layers[i]->b = calloc(len, sizeof(float));
+    net->layers[i]->a = calloc(len, sizeof(float));
+    net->layers[i]->z = calloc(len, sizeof(float));
+    net->layers[i]->d = calloc(len, sizeof(float));
+    net->layers[i]->db = calloc(len, sizeof(float));
+
+    net->layers[i]->W = malloc(sizeof(float *) * len);
+    net->layers[i]->dW = malloc(sizeof(float *) * len);
   }
 
+  for (size_t i = 0; i < net->layers[0]->len; i++) {
+    fscanf(fd, "%f", &v);
+    net->layers[0]->b[i] = v;
+  }
   for (size_t i = 1; i < net->len; i++) {
     NNL *curr = net->layers[i];
     NNL *prev = net->layers[i - 1];
-
-    curr->b = calloc(curr->len, sizeof(float));
-    curr->a = calloc(curr->len, sizeof(float));
-    curr->z = calloc(curr->len, sizeof(float));
-    curr->d = calloc(curr->len, sizeof(float));
-    curr->db = calloc(curr->len, sizeof(float));
-    curr->dW = malloc(sizeof(float *) * curr->len);
-    curr->W = malloc(sizeof(float *) * curr->len);
-
-    for (size_t j = 0; j < curr->len; j++) {
-      fscanf(fd, "%f", &v);
-      curr->b[j] = v;
-    }
-
-    for (size_t j = 0; j < curr->len; j++) {
-      curr->W = malloc(sizeof(float) * prev->len);
-      curr->dW = malloc(sizeof(float) * prev->len);
-      for (size_t k = 0; k < prev->len; k++) {
-        // curr->W[k] =
-      }
-    }
-    // load_layer(curr, fd, curr->len, prev->len);
+    load_layer(curr, fd, prev->len);
   }
 }

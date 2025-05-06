@@ -52,16 +52,9 @@ typedef struct {
   size_t len;
 } NeuralNetworkLayer;
 
-struct NeuralNetworkEntry {
-  float *inputs;
-  uint16_t taken;
-  NeuralNetworkEntry *next;
-};
-
 typedef struct {
   float learning_rate;
   NeuralNetworkLayer **layers;
-  NeuralNetworkEntry *history;
   size_t len;
 } NeuralNetwork;
 
@@ -71,10 +64,10 @@ void nninit(NeuralNetwork *);
 NeuralNetworkLayer *dense(size_t, NeuralNetworkActivation);
 
 void nnforesee(NeuralNetwork *, float *);
+float *nnforward(NeuralNetwork *, float *);
 void nnbalance(NeuralNetwork *, float *);
 
-void nnstoreentry(NeuralNetwork *, uint16_t taken);
-void nnfreehistory(NeuralNetworkEntry *);
+float nnmax(float *, size_t);
 
 void nnsave(NeuralNetwork *, const char *);
 void nnload(NeuralNetwork *, const char *);
