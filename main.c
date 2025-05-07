@@ -37,14 +37,13 @@ void train(NeuralNetwork *net, float reward, GameState *game) {
   float current_reward = reward;
 
   for (size_t i = 0; i < game->move_count - 1; i++) {
-    // float *out = nnforward(net, game->history[i + 1].inputs);
-    // size_t len = net->layers[net->len - 1]->len;
-    // current_reward = nnmax(out, len);
-    // target[game->history[i].taken] = reward + discount_factor *
-    // current_reward;
+    float *out = nnforward(net, game->history[i + 1].inputs);
+    size_t len = net->layers[net->len - 1]->len;
+    current_reward = nnmax(out, len);
+    target[game->history[i].taken] = reward + discount_factor * current_reward;
 
-    target[game->history[i].taken] = current_reward;
-    current_reward *= discount_factor;
+    // target[game->history[i].taken] = current_reward;
+    // current_reward *= discount_factor;
   }
 
   nnbalance(net, target);
@@ -99,7 +98,8 @@ int8_t game(NeuralNetwork *net, GMF func) {
   GMF enemy = func;
   GMF net_func = net_move;
   BOARD net_player = RED;
-  if (rand() % 2) {
+  // if (rand() % 2)
+  if (0) {
     enemy = net_move;
     net_func = func;
     net_player = BLUE;
@@ -128,13 +128,13 @@ int main(int argc, char **argv) {
   int games = 10000;
 
   NeuralNetwork *net = nncreate(5, 0.1f);
-  net->layers[0] = dense(42, RELU);
-  net->layers[1] = dense(128, RELU);
-  net->layers[2] = dense(128, RELU);
-  net->layers[3] = dense(64, RELU);
-  net->layers[4] = dense(7, SOFTMAX);
-
-  nninit(net);
+  // net->layers[0] = dense(42, RELU);
+  // net->layers[1] = dense(128, RELU);
+  // net->layers[2] = dense(128, RELU);
+  // net->layers[3] = dense(64, RELU);
+  // net->layers[4] = dense(7, SOFTMAX);
+  //
+  // nninit(net);
 
   nnload(net, "rl");
 

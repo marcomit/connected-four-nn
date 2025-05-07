@@ -3,6 +3,8 @@
 #ifndef ANN_H
 #define ANN_H
 
+typedef enum { DENSE, CNN, RNN, POOLING, GRU, LSTM } NeuralNetworkLayerType;
+
 typedef enum {
   // Ridge functions
   IDENTITY,
@@ -23,7 +25,6 @@ typedef enum {
 } NeuralNetworkActivation;
 
 typedef NeuralNetworkActivation NNA;
-typedef struct NeuralNetworkEntry NeuralNetworkEntry;
 
 typedef struct {
   // Pre activation
@@ -49,6 +50,8 @@ typedef struct {
 
   NNA activation;
 
+  NeuralNetworkLayerType type;
+
   size_t len;
 } NeuralNetworkLayer;
 
@@ -61,7 +64,7 @@ typedef struct {
 NeuralNetwork *nncreate(size_t, float);
 void nninit(NeuralNetwork *);
 
-NeuralNetworkLayer *dense(size_t, NeuralNetworkActivation);
+NeuralNetworkLayer *nndense(size_t, NeuralNetworkActivation);
 
 void nnforesee(NeuralNetwork *, float *);
 float *nnforward(NeuralNetwork *, float *);

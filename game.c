@@ -44,7 +44,7 @@ int8_t valid_col(GameState *state, uint8_t col) {
   return -1;
 }
 
-uint8_t random_move(GameState *state, NeuralNetwork *net, BOARD t) {
+uint8_t random_move(GameState *state, NeuralNetwork *net) {
   uint8_t curr = 0;
   uint8_t valid[COLS];
   for (uint8_t i = 0; i < COLS; i++)
@@ -152,7 +152,7 @@ void draw_board(GameState *state) {
   printf(DEFAULT_FG "\n");
 }
 
-uint8_t player_move(GameState *state, NeuralNetwork *net, BOARD t) {
+uint8_t player_move(GameState *state, NeuralNetwork *net) {
   int col = -1;
   while (col == -1) {
     printf("Inserisci la colonna: ");
@@ -167,6 +167,6 @@ uint8_t player_move(GameState *state, NeuralNetwork *net, BOARD t) {
     }
   }
   if (valid_col(state, col - 1) == -1)
-    return player_move(state, net, t);
+    return player_move(state, net);
   return col - 1;
 }

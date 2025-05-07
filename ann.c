@@ -9,6 +9,8 @@
 typedef NeuralNetworkLayer NNL;
 typedef NeuralNetworkEntry NNE;
 
+typedef float (*LossFunc)(float *, float *, size_t);
+
 float nnmax(float *X, size_t len) {
   float m = X[0];
   for (size_t i = 1; i < len; i++) {
@@ -43,6 +45,13 @@ float sigmoid(float x) { return 1 / (1 + expf(x)); }
 float nntanh(float x) { return tanhf(x); }
 float softsign(float x) { return x / (1 + absf(x)); }
 float softplus(float x) { return logf(1 + expf(x)); }
+float leaky_relu(float x) {
+  float alpha = 0.01f;
+#ifdef LEAKY_RELU_ALPHA
+  alpha = LEAKY_RELU_ALPHA;
+#endif
+  return ReLU(x) * alpha;
+}
 
 float swish(float x) { return x / (1 + expf(-x)); }
 float ELiSH(float x) {
@@ -210,10 +219,11 @@ NeuralNetwork *nncreate(size_t len, float learning_rate) {
   return nn;
 }
 
-// static float *initf(size_t len) { return (float *)calloc(len, sizeof(float));
+// static float *initf(size_t len) { return (float *)calloc(len,
+// sizeof(float));
 // }
 
-NNL *dense(size_t len, NNA activation) {
+NNL *nndense(size_t len, NNA activation) {
   NNL *layer = (NNL *)malloc(sizeof(NNL));
 
   layer->len = len;
@@ -226,6 +236,31 @@ NNL *dense(size_t len, NNA activation) {
   layer->db = calloc(len, sizeof(float) * len);
 
   layer->activation = activation;
+  return layer;
+}
+
+NNL *cnn(size_t len, NNA activation) {
+  NNL *layer = (NNL *)malloc(sizeof(NNL));
+  return layer;
+}
+
+NNL *nnpooling(size_t len, NNA activation) {
+  NNL *layer = (NNL *)malloc(sizeof(NNL));
+  return layer;
+}
+
+NNL *rnn(size_t len, NNA activation) {
+  NNL *layer = (NNL *)malloc(sizeof(NNL));
+  return layer;
+}
+
+NNL *nngru(size_t len, NNA activation) {
+  NNL *layer = (NNL *)malloc(sizeof(NNL));
+  return layer;
+}
+
+NNL *nnlstm(size_t len, NNA activation) {
+  NNL *layer = (NNL *)malloc(sizeof(NNL));
   return layer;
 }
 
