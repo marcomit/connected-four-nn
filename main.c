@@ -8,7 +8,6 @@
 
 #define BOARD_LEN (ROWS) * (COLS)
 
-typedef NeuralNetworkEntry NNE;
 typedef uint8_t (*GMF)(GameState *, NeuralNetwork *);
 
 float *normalize_board(GameState *game) {
@@ -125,18 +124,18 @@ void print_stats(size_t w, size_t l, size_t p, size_t t) {
 
 int main(int argc, char **argv) {
   srand(time(NULL));
-  int games = 10000;
+  int games = 100;
 
   NeuralNetwork *net = nncreate(5, 0.1f);
-  // net->layers[0] = dense(42, RELU);
-  // net->layers[1] = dense(128, RELU);
-  // net->layers[2] = dense(128, RELU);
-  // net->layers[3] = dense(64, RELU);
-  // net->layers[4] = dense(7, SOFTMAX);
-  //
-  // nninit(net);
+  if (!nnload(net, "rl")) {
+    net->layers[0] = nndense(42, ACTIVATION_RELU);
+    net->layers[1] = nndense(128, ACTIVATION_RELU);
+    net->layers[2] = nndense(128, ACTIVATION_RELU);
+    net->layers[3] = nndense(64, ACTIVATION_RELU);
+    net->layers[4] = nndense(7, ACTIVATION_SOFTMAX);
 
-  nnload(net, "rl");
+    nninit(net);
+  }
 
   size_t twins = 0;
   size_t tloses = 0;
@@ -146,28 +145,27 @@ int main(int argc, char **argv) {
   size_t loses = 0;
   size_t draws = 0;
 
-  GMF func[2] = {random_move, net_move};
-  for (int f = 0; f < 2; f++)
+  GMF func = random_move;
+  for (int f = 0; f < 2; f++) {
     for (int i = 1; i <= games; i++) {
-      int result = game(net, func[0]);
-      if (result == 0) {
-        draws++;
-      } else if (result == 1) {
-        wins++;
-      } else
-        loses++;
-      if (i % 100 == 0) {
-        twins += wins;
-        tloses += loses;
-        tdraws += draws;
-        print_stats(wins, loses, draws, twins + tloses + tdraws);
-        wins = 0;
-        loses = 0;
-        draws = 0;
+      for (int j = 0; j < 100; j++) {
+        int result = game(net, func);
+        if (result == 0) {
+          draws++;
+        } else if (result == 1) {
+          wins++;
+        } else
+          loses++;
       }
-      // free_game(g);
+      twins += wins;
+      tloses += loses;
+      tdraws += draws;
+      print_stats(wins, loses, draws, twins + tloses + tdraws);
+      wins = 0;
+      loses = 0;
+      draws = 0;
     }
-
+  }
   printf("\n");
   print_stats(twins, tloses, tdraws, twins + tloses + tdraws);
 
@@ -177,7 +175,7 @@ int main(int argc, char **argv) {
 
   nnsave(net, "rl");
 
-  GameState *g = gameplay(net, player_move, net_move, 1);
+  int8_t winner = game(net, player_move);
 
   return 0;
 }

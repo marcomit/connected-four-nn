@@ -1,59 +1,9 @@
+#include "nnlayer.h"
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #ifndef ANN_H
 #define ANN_H
-
-typedef enum { DENSE, CNN, RNN, POOLING, GRU, LSTM } NeuralNetworkLayerType;
-
-typedef enum {
-  // Ridge functions
-  IDENTITY,
-  RELU,
-  SIGMOID,
-  SWISH,
-  TANH,
-  SOFTSIGN,
-
-  SOFTPLUS,
-  ELISH,
-  SINUSOID,
-  GAUSSIAN,
-
-  SOFTMAX,
-  MAXOUT
-  // Radial functions
-} NeuralNetworkActivation;
-
-typedef NeuralNetworkActivation NNA;
-
-typedef struct {
-  // Pre activation
-  float *z;
-
-  // Post activation
-  float *a;
-
-  // Matrice dei pesi
-  float **W;
-
-  // Biases
-  float *b;
-
-  // Gradienti dei neuroni
-  float *d;
-
-  // Gradienti dei biases
-  float *db;
-
-  // Gradienti dei pesi
-  float **dW;
-
-  NNA activation;
-
-  NeuralNetworkLayerType type;
-
-  size_t len;
-} NeuralNetworkLayer;
 
 typedef struct {
   float learning_rate;
@@ -73,5 +23,5 @@ void nnbalance(NeuralNetwork *, float *);
 float nnmax(float *, size_t);
 
 void nnsave(NeuralNetwork *, const char *);
-void nnload(NeuralNetwork *, const char *);
+bool nnload(NeuralNetwork *, const char *);
 #endif /* ifndef ANN_H */

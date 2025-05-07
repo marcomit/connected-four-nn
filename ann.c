@@ -1,5 +1,6 @@
 #include "ann.h"
 #include <math.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -7,7 +8,8 @@
 #include <string.h>
 
 typedef NeuralNetworkLayer NNL;
-typedef NeuralNetworkEntry NNE;
+
+typedef NeuralNetworkDenseParams NNDense;
 
 typedef float (*LossFunc)(float *, float *, size_t);
 
@@ -103,46 +105,49 @@ static float activation_derivative_single(NNA type, float x) {
 }
 
 static void activation(NNL *layer) {
-  NNA activation = layer->activation;
-  if (activation == SOFTMAX) {
-    float m = nnmax(layer->z, layer->len);
+  NeuralNetworkDenseParams *params = (NeuralNetworkDenseParams *)layer->params;
+  NNA activation = params->activation;
+  if (activation == ACTIVATION_SOFTMAX) {
+    float m = nnmax(params->z, params->len);
     float s = 0.0f;
-    for (size_t i = 0; i < layer->len; i++) {
-      layer->a[i] = expf(layer->z[i] - m);
-      s += layer->a[i];
+    for (size_t i = 0; i < params->len; i++) {
+      params->a[i] = expf(params->z[i] - m);
+      s += params->a[i];
     }
-    for (size_t i = 0; i < layer->len; i++) {
-      layer->a[i] /= s;
+    for (size_t i = 0; i < params->len; i++) {
+      params->a[i] /= s;
     }
     return;
   }
-  if (activation == MAXOUT) {
+  if (activation == ACTIVATION_MAXOUT) {
     return;
   }
-  for (int i = 0; i < layer->len; i++) {
-    layer->a[i] = activation_single(layer->activation, layer->z[i]);
+  for (int i = 0; i < params->len; i++) {
+    params->a[i] = activation_single(params->activation, params->z[i]);
   }
 }
 
 static void activation_derivative(NNL *layer, float *out) {
-  NNA activation = layer->activation;
-  if (activation == SOFTMAX) {
+  NeuralNetworkDenseParams *params = (NeuralNetworkDenseParams *)layer->params;
+  NNA activation = ((NeuralNetworkDenseParams *)layer->params)->activation;
+  if (activation == ACTIVATION_SOFTMAX) {
     return;
   }
-  if (activation == MAXOUT) {
+  if (activation == ACTIVATION_MAXOUT) {
     return;
   }
-  for (int i = 0; i < layer->len; i++) {
-    out[i] = activation_derivative_single(layer->activation, layer->z[i]);
+  for (int i = 0; i < params->len; i++) {
+    out[i] = activation_derivative_single(params->activation, params->z[i]);
   }
 }
 
 // Cost functions
 
-// Mean squared error
-// It is used for regression problems.
-// It calculates the average squared difference between predicated and actual
-// values
+/* Mean squared error
+ * It is used for regression problems.
+ * It calculates the average squared difference between predicated and actual
+ * values
+ */
 static float mean_squared_error(float *outputs, float *targets, size_t len) {
   float sum = 0.0f;
   for (size_t i = 0; i < len; i++) {
@@ -151,10 +156,11 @@ static float mean_squared_error(float *outputs, float *targets, size_t len) {
   return sum / len;
 }
 
-// Binary cross entropy loss
-// It is used for binary classification problems.
-// It measures the difference between the predicated and actual probabilities
-// of the binary output available
+/* Binary cross entropy loss
+ * It is used for binary classification problems.
+ * It measures the difference between the predicated and actual probabilities
+ * of the binary output available
+ */
 static float binary_ce(float *outputs, float *targets, size_t len) {
   float sum = 0.0f;
   for (size_t i = 0; i < len; i++) {
@@ -164,10 +170,11 @@ static float binary_ce(float *outputs, float *targets, size_t len) {
   return -sum / len;
 }
 
-// Category cross entropy
-// It is used for Multi-class classification problems
-// It measures the difference between the predicates and actual probabilities
-// of multi-classes output available
+/* Category cross entropy
+ * It is used for Multi-class classification problems
+ * It measures the difference between the predicates and actual probabilities
+ * of multi-classes output available
+ */
 static float category_ce(float *outputs, float *targets, size_t len) {
   float sum = 0.0f;
   for (size_t i = 0; i < len; i++) {
@@ -176,11 +183,12 @@ static float category_ce(float *outputs, float *targets, size_t len) {
   return -sum / len;
 }
 
-// Hinge loss
-// Commonly used for binary classification tasks
-// using Support Vector Machines (SVMs)
-// It penalizes misclassified samples and aim to maximize
-// the margin between the decision boundary and the training samples
+/* Hinge loss
+ * Commonly used for binary classification tasks
+ * using Support Vector Machines (SVMs)
+ * It penalizes misclassified samples and aim to maximize
+ * the margin between the decision boundary and the training samples
+ */
 static float hinge_loss(float *outputs, float *targets, size_t len) {
   float sum = 0.0f;
   for (size_t i = 0; i < len; i++) {
@@ -192,9 +200,10 @@ static float hinge_loss(float *outputs, float *targets, size_t len) {
   return sum;
 }
 
-// Kullback-Leibler Divergence
-// It measures the differencebetween predicated and actual probability
-// distributions. It is commonly used in tasks such as generative modeling
+/* Kullback-Leibler Divergence
+ * It measures the differencebetween predicated and actual probability
+ * distributions. It is commonly used in tasks such as generative modeling
+ */
 static float kl_divergence(float *outputs, float *targets, size_t len) {
   float sum = 0.0f;
   for (size_t i = 0; i < len; i++) {
@@ -203,10 +212,11 @@ static float kl_divergence(float *outputs, float *targets, size_t len) {
   return sum;
 }
 
-// Root Mean Squared error
-// This is a variant of MSE.
-// It is used to measure the performance of regression models
-// when the scale of the target variable matters
+/* Root Mean Squared error
+ * This is a variant of MSE.
+ * It is used to measure the performance of regression models
+ * when the scale of the target variable matters
+ */
 static float root_mse(float *outputs, float *targets, size_t len) {
   return sqrtf(mean_squared_error(outputs, targets, len));
 }
@@ -219,23 +229,25 @@ NeuralNetwork *nncreate(size_t len, float learning_rate) {
   return nn;
 }
 
-// static float *initf(size_t len) { return (float *)calloc(len,
-// sizeof(float));
-// }
-
 NNL *nndense(size_t len, NNA activation) {
   NNL *layer = (NNL *)malloc(sizeof(NNL));
 
-  layer->len = len;
+  NNDense *params = malloc(sizeof(NNDense));
 
-  layer->a = calloc(len, sizeof(float) * len);
-  layer->b = calloc(len, sizeof(float) * len);
-  layer->z = calloc(len, sizeof(float) * len);
+  params->len = len;
 
-  layer->d = calloc(len, sizeof(float) * len);
-  layer->db = calloc(len, sizeof(float) * len);
+  params->a = calloc(len, sizeof(float) * len);
+  params->b = calloc(len, sizeof(float) * len);
+  params->z = calloc(len, sizeof(float) * len);
 
-  layer->activation = activation;
+  params->d = calloc(len, sizeof(float) * len);
+  params->db = calloc(len, sizeof(float) * len);
+
+  params->activation = activation;
+
+  layer->params = params;
+  layer->type = LAYER_DENSE;
+
   return layer;
 }
 
@@ -266,8 +278,9 @@ NNL *nnlstm(size_t len, NNA activation) {
 
 void nninit(NeuralNetwork *nn) {
   for (size_t i = 1; i < nn->len; i++) {
-    NNL *curr = nn->layers[i];
-    NNL *prev = nn->layers[i - 1];
+    NNDense *curr = nn->layers[i]->params;
+    NNDense *prev = nn->layers[i - 1]->params;
+
     curr->W = (float **)malloc(sizeof(float *) * curr->len);
     curr->dW = (float **)malloc(sizeof(float *) * curr->len);
     float scale = sqrtf(6.0f / (prev->len + curr->len));
@@ -283,23 +296,13 @@ void nninit(NeuralNetwork *nn) {
   }
 }
 
-static void forward_pass_layer(NNL *prev, NNL *curr) {
-  for (size_t i = 0; i < curr->len; i++) {
-    float z = curr->b[i];
-    for (size_t j = 0; j < prev->len; j++) {
-      z += prev->a[j] * curr->W[i][j];
-    }
-    curr->z[i] += z;
-    curr->a[i] += z;
-  }
-  activation(curr);
-}
-
 void nnforesee(NeuralNetwork *nn, float *inputs) {
   // Copy the input into the first layer
-  for (size_t i = 0; i < nn->layers[0]->len; i++) {
-    nn->layers[0]->z[i] = inputs[i];
-  }
+  // for (size_t i = 0; i < nn->layers[0]->len; i++) {
+  //   nn->layers[0]->z[i] = inputs[i];
+  // }
+  NNL *in = nn->layers[0];
+  in->forward(in, inputs, ((NNDense *)in->params)->len);
 
   for (size_t i = 1; i < nn->len; i++) {
     NNL *prev = nn->layers[i - 1];
@@ -312,7 +315,7 @@ static void backward_output(NNL *out, float *target) {
   for (size_t i = 0; i < out->len; i++) {
     float dz = out->a[i] - target[i];
 
-    if (out->activation == SOFTMAX) {
+    if (out->activation == ACTIVATION_SOFTMAX) {
       out->d[i] = dz;
     } else {
       float da = activation_derivative_single(out->activation, dz);
@@ -448,9 +451,12 @@ static void load_layer(NNL *l, FILE *fd, size_t prev_len) {
   }
 }
 
-void nnload(NeuralNetwork *net, const char *f) {
-  FILE *fd = fopen(f, "r");
+bool nnload(NeuralNetwork *net, const char *f) {
+  FILE *fd;
 
+  if (!(fd = fopen(f, "r"))) {
+    return false;
+  }
   float v;
 
   fscanf(fd, "%zu", &net->len);
@@ -490,4 +496,5 @@ void nnload(NeuralNetwork *net, const char *f) {
     NNL *prev = net->layers[i - 1];
     load_layer(curr, fd, prev->len);
   }
+  return true;
 }
