@@ -50,8 +50,6 @@ typedef struct {
 
   NNA activation;
 
-  NeuralNetworkLayerType type;
-
   size_t len;
 } NeuralNetworkLayer;
 

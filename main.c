@@ -8,7 +8,7 @@
 
 #define BOARD_LEN (ROWS) * (COLS)
 
-typedef NeuralNetworkEntry NNE;
+// Game Move Function
 typedef uint8_t (*GMF)(GameState *, NeuralNetwork *);
 
 float *normalize_board(GameState *game) {
@@ -33,7 +33,7 @@ void train(NeuralNetwork *net, float reward, GameState *game) {
     target[i] = 0.1f;
   }
 
-  float discount_factor = 0.9f; // 0.99f;
+  float discount_factor = 0.9f;
   float current_reward = reward;
 
   for (size_t i = 0; i < game->move_count - 1; i++) {
@@ -70,11 +70,10 @@ uint8_t net_move(GameState *game, NeuralNetwork *net) {
 
   int8_t generated = take_valid_col(game, net->layers[net->len - 1]->a);
   if (generated == -1) {
-    printf("Rete rotta");
+    perror("Rete rotta");
   } else {
     return generated;
   }
-  printf("E' finito proprio dove non doveva finire\n\n\n");
   exit(1);
 }
 
@@ -125,16 +124,16 @@ void print_stats(size_t w, size_t l, size_t p, size_t t) {
 
 int main(int argc, char **argv) {
   srand(time(NULL));
-  int games = 10000;
+  int games = 100;
 
   NeuralNetwork *net = nncreate(5, 0.1f);
-  // net->layers[0] = dense(42, RELU);
-  // net->layers[1] = dense(128, RELU);
-  // net->layers[2] = dense(128, RELU);
-  // net->layers[3] = dense(64, RELU);
-  // net->layers[4] = dense(7, SOFTMAX);
-  //
-  // nninit(net);
+  net->layers[0] = nndense(42, RELU);
+  net->layers[1] = nndense(128, RELU);
+  net->layers[2] = nndense(128, RELU);
+  net->layers[3] = nndense(64, RELU);
+  net->layers[4] = nndense(7, SOFTMAX);
+
+  nninit(net);
 
   nnload(net, "rl");
 
@@ -146,27 +145,32 @@ int main(int argc, char **argv) {
   size_t loses = 0;
   size_t draws = 0;
 
+  // for (int i = 0; i < 100; i++) {
+  //   printf("game");
+  //   game(net, net_move);
+  // }
   GMF func[2] = {random_move, net_move};
-  for (int f = 0; f < 2; f++)
+  for (int f = 0; f < 2; f++) {
     for (int i = 1; i <= games; i++) {
-      int result = game(net, func[0]);
-      if (result == 0) {
-        draws++;
-      } else if (result == 1) {
-        wins++;
-      } else
-        loses++;
-      if (i % 100 == 0) {
-        twins += wins;
-        tloses += loses;
-        tdraws += draws;
-        print_stats(wins, loses, draws, twins + tloses + tdraws);
-        wins = 0;
-        loses = 0;
-        draws = 0;
+      for (int j = 0; j < 100; j++) {
+        int result = game(net, func[0]);
+        if (result == 0) {
+          draws++;
+        } else if (result == 1) {
+          wins++;
+        } else
+          loses++;
       }
+      twins += wins;
+      tloses += loses;
+      tdraws += draws;
+      print_stats(wins, loses, draws, twins + tloses + tdraws);
+      wins = 0;
+      loses = 0;
+      draws = 0;
       // free_game(g);
     }
+  }
 
   printf("\n");
   print_stats(twins, tloses, tdraws, twins + tloses + tdraws);

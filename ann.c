@@ -7,7 +7,6 @@
 #include <string.h>
 
 typedef NeuralNetworkLayer NNL;
-typedef NeuralNetworkEntry NNE;
 
 typedef float (*LossFunc)(float *, float *, size_t);
 
@@ -449,7 +448,13 @@ static void load_layer(NNL *l, FILE *fd, size_t prev_len) {
 }
 
 void nnload(NeuralNetwork *net, const char *f) {
-  FILE *fd = fopen(f, "r");
+  FILE *fd;
+
+  if ((fd = fopen(f, "r")) == 0) {
+    printf("File does not exists\n");
+    return;
+  }
+  printf("Load network from file %s\n", f);
 
   float v;
 
