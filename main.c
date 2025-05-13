@@ -65,16 +65,26 @@ int8_t take_valid_col(GameState *state, float *out) {
 }
 
 uint8_t net_move(GameState *game, NeuralNetwork *net) {
-
   nnforesee(net, normalize_board(game));
 
   int8_t generated = take_valid_col(game, net->layers[net->len - 1]->a);
   if (generated == -1) {
     perror("Rete rotta");
-  } else {
-    return generated;
   }
-  exit(1);
+  return generated;
+}
+
+uint8_t self_move(GameState *game, NeuralNetwork *net) {
+  NeuralNetwork *net2 = malloc(sizeof(NeuralNetwork));
+  nnload(net2, "rl");
+
+  nnforesee(net2, normalize_board(game));
+
+  int8_t generated = take_valid_col(game, net2->layers[net2->len - 1]->a);
+  if (generated == -1) {
+    perror("rete rotta");
+  }
+  return generated;
 }
 
 GameState *gameplay(NeuralNetwork *net, GMF blue, GMF red, int show) {
@@ -149,11 +159,11 @@ int main(int argc, char **argv) {
   //   printf("game");
   //   game(net, net_move);
   // }
-  GMF func[2] = {random_move, net_move};
+  GMF func[2] = {random_move, self_move};
   for (int f = 0; f < 2; f++) {
     for (int i = 1; i <= games; i++) {
       for (int j = 0; j < 100; j++) {
-        int result = game(net, func[0]);
+        int result = game(net, func[f]);
         if (result == 0) {
           draws++;
         } else if (result == 1) {
