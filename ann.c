@@ -380,6 +380,43 @@ float *nnforward(NeuralNetwork *net, float *inputs) {
   return out->a;
 }
 
+NeuralNetwork *nnclone(NeuralNetwork *original) {
+  NeuralNetwork *clone = nncreate(original->len, original->len);
+
+  // Copy each layer's configuration
+  for (int i = 0; i < original->len; i++) {
+    NeuralNetworkLayer *orig_layer = original->layers[i];
+    clone->layers[i] = nndense(orig_layer->len, orig_layer->activation);
+  }
+
+  nninit(clone);
+
+  // Copy weights and biases
+  for (int i = 0; i < original->len; i++) {
+    NeuralNetworkLayer *orig_layer = original->layers[i];
+    NeuralNetworkLayer *clone_layer = clone->layers[i];
+
+    if (i >
+        0) { // Skip the first layer which doesn't have weights from previous
+      size_t prev_size = original->layers[i - 1]->len;
+
+      // Copy weights
+      for (size_t j = 0; j < orig_layer->len; j++) {
+        for (size_t k = 0; k < prev_size; k++) {
+          clone_layer->W[j][k] = orig_layer->W[j][k];
+        }
+      }
+
+      // Copy biases
+      for (size_t j = 0; j < orig_layer->len; j++) {
+        clone_layer->b[j] = orig_layer->b[j];
+      }
+    }
+  }
+
+  return clone;
+}
+
 /* La prima riga e' l'intestazione della rete.
  * Cioe' il primo numero e' il numero di layer ed il secondo il learning_rate.
  *
@@ -447,12 +484,12 @@ static void load_layer(NNL *l, FILE *fd, size_t prev_len) {
   }
 }
 
-void nnload(NeuralNetwork *net, const char *f) {
+int nnload(NeuralNetwork *net, const char *f) {
   FILE *fd;
 
   if ((fd = fopen(f, "r")) == 0) {
     printf("File does not exists\n");
-    return;
+    return 0;
   }
   printf("Load network from file %s\n", f);
 
@@ -495,4 +532,8 @@ void nnload(NeuralNetwork *net, const char *f) {
     NNL *prev = net->layers[i - 1];
     load_layer(curr, fd, prev->len);
   }
+
+  fclose(fd);
+  printf("File chiuso\n");
+  return 1;
 }

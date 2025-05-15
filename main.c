@@ -75,14 +75,17 @@ uint8_t net_move(GameState *game, NeuralNetwork *net) {
 }
 
 uint8_t self_move(GameState *game, NeuralNetwork *net) {
-  NeuralNetwork *net2 = malloc(sizeof(NeuralNetwork));
-  nnload(net2, "rl");
+  NeuralNetwork *copy = nnclone(net);
 
-  nnforesee(net2, normalize_board(game));
+  nnforesee(copy, normalize_board(game));
 
-  int8_t generated = take_valid_col(game, net2->layers[net2->len - 1]->a);
+  NeuralNetworkLayer *out = copy->layers[copy->len - 1];
+
+  int8_t generated = take_valid_col(game, out->a);
+  printf("generato %d\n", generated);
   if (generated == -1) {
     perror("rete rotta");
+    exit(1);
   }
   return generated;
 }
@@ -129,12 +132,13 @@ int8_t game(NeuralNetwork *net, GMF func) {
 }
 
 void print_stats(size_t w, size_t l, size_t p, size_t t) {
+  printf("\e[1;1H\e[2J");
   printf("TOTAL: %zu WINS: %zu LOSES: %zu DRAWS: %zu\n", t, w, l, p);
 }
 
 int main(int argc, char **argv) {
   srand(time(NULL));
-  int games = 100;
+  int games = 10000;
 
   NeuralNetwork *net = nncreate(5, 0.1f);
   net->layers[0] = nndense(42, RELU);
@@ -155,31 +159,31 @@ int main(int argc, char **argv) {
   size_t loses = 0;
   size_t draws = 0;
 
-  // for (int i = 0; i < 100; i++) {
-  //   printf("game");
-  //   game(net, net_move);
-  // }
-  GMF func[2] = {random_move, self_move};
-  for (int f = 0; f < 2; f++) {
-    for (int i = 1; i <= games; i++) {
-      for (int j = 0; j < 100; j++) {
-        int result = game(net, func[f]);
-        if (result == 0) {
-          draws++;
-        } else if (result == 1) {
-          wins++;
-        } else
-          loses++;
-      }
-      twins += wins;
-      tloses += loses;
-      tdraws += draws;
-      print_stats(wins, loses, draws, twins + tloses + tdraws);
-      wins = 0;
-      loses = 0;
-      draws = 0;
-      // free_game(g);
+  printf("fatto\n");
+
+  // GMF func[2] = {random_move, self_move};
+  // for (int f = 0; f < 2; f++) {
+  for (int i = 1; i <= games; i++) {
+    for (int j = 0; j < 100; j++) {
+      int result = game(net, random_move);
+      if (result == 0) {
+        draws++;
+      } else if (result == 1) {
+        wins++;
+      } else
+        loses++;
     }
+    twins += wins;
+    tloses += loses;
+    tdraws += draws;
+    print_stats(wins, loses, draws, twins + tloses + tdraws);
+    printf("Curr wins %.2f\n", (float)twins / (twins + tloses + tdraws) * 100);
+    printf("Remaining %f\n", (float)(twins + tloses + tdraws) / (games * 100));
+    wins = 0;
+    loses = 0;
+    draws = 0;
+    // free_game(g);
+    // }
   }
 
   printf("\n");
@@ -188,6 +192,13 @@ int main(int argc, char **argv) {
   printf("\n");
   printf("WINS: %.2f\n",
          (float)(100 * twins) / (float)(twins + tloses + tdraws));
+
+  // for (int i = 0; i < 3; i++) {
+  //   for (int j = 0; j < 100; j++) {
+  //     printf("game %d %d\n", i, j);
+  //     game(net, self_move);
+  //   }
+  // }
 
   nnsave(net, "rl");
 

@@ -70,6 +70,8 @@ void nnbalance(NeuralNetwork *, float *);
 
 float nnmax(float *, size_t);
 
+NeuralNetwork *nnclone(NeuralNetwork *);
+
 void nnsave(NeuralNetwork *, const char *);
-void nnload(NeuralNetwork *, const char *);
+int nnload(NeuralNetwork *, const char *);
 #endif /* ifndef ANN_H */
